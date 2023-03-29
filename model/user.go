@@ -1,11 +1,11 @@
 package model
 
 type User struct {
-	ID       int    `json:"id"`
-	Username string `json:"username"`
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Type     string `json:"type"`
+	ID       int    `json:"id" redis:"id"`
+	Username string `json:"username" redis:"username"`
+	Email    string `json:"email" redis:"email"`
+	Password string `json:"password" redis:"password"`
+	Type     string `json:"type" redis:"type"`
 }
 
 type UsersResponse struct {
