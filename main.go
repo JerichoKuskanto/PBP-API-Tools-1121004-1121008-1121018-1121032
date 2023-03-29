@@ -1,6 +1,7 @@
 package main
 
 import (
+	"PBP-API-Tools-1121004-1121008-1121018-1121032/controller"
 	"fmt"
 	"log"
 	"net/http"
@@ -11,6 +12,8 @@ import (
 
 func main() {
 	router := mux.NewRouter()
+
+	router.HandleFunc("/email", controller.SendNotificationEmail).Methods("POST")
 
 	http.Handle("/", router)
 	fmt.Println("Connected to port 8492")
