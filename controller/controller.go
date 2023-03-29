@@ -40,6 +40,13 @@ func sendMail(receiver string, usertype int) bool {
 
 var ctx = context.Background()
 
+func mailSending(totalUser int, receiver string, usertype int) {
+	for i := 0; i < totalUser; i++ {
+		time.Sleep(100 * time.Millisecond)
+		sendMail(receiver, usertype)
+	}
+}
+
 func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
 	var user model.User
 	var users []model.User
@@ -112,64 +119,6 @@ func getAllUser() []model.User {
 		}
 	}
 	return users
-}
-func LoginUser(w http.ResponseWriter, r *http.Request) {
-	db := connect()
-	defer db.Close()
-
-	err := r.ParseForm()
-	if err != nil {
-		sendErrorResponse(w, "Something went wrong, please try again")
-		return
-	}
-	loginSuccess := false
-	email := r.Form.Get("email")
-	password := r.Form.Get("password")
-
-	query := "SELECT id,name,age,address,email,password,usertype FROM users"
-	rows, err := db.Query(query)
-
-	var user model.User
-
-	for rows.Next() {
-		var usertype int
-		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &usertype); err != nil {
-			log.Println(err)
-			sendErrorResponse(w, "Something went wrong, please try again")
-			return
-		} else {
-			if email == user.Email && password == user.Password {
-				loginSuccess = true
-				generateToken(w, user.ID, user.Username, usertype)
-				break
-			}
-		}
-	}
-
-	var response model.UsersResponse
-	if err == nil && loginSuccess {
-		response.Status = 200
-		response.Message = "Success login"
-		var users []model.User
-		users = append(users, model.User{ID: user.ID, Username: user.Username, Email: user.Email, Password: user.Password})
-		response.Data = users
-
-	} else {
-		response.Status = 400
-		response.Message = "Login failed!"
-	}
-	w.Header().Set("Content=Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-
-}
-
-func LogoutUser(w http.ResponseWriter, r *http.Request) {
-	resetUserToken(w)
-	var response model.UsersResponse
-	response.Status = 200
-	response.Message = "Success"
-	w.Header().Set("Content=Type", "application/json")
-	json.NewEncoder(w).Encode(response)
 }
 
 func sendUnauthorizedResponse(w http.ResponseWriter) {
