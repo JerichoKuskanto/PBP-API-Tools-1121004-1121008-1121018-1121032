@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
+	"time"
 
 	"gopkg.in/gomail.v2"
 )
@@ -30,6 +31,13 @@ func sendMail(receiver string, usertype int) bool {
 	} else {
 		log.Println("Email sent to ", receiver)
 		return true
+	}
+}
+
+func mailSending(totalUser int, receiver string, usertype int) {
+	for i := 0; i < totalUser; i++ {
+		time.Sleep(100 * time.Millisecond)
+		sendMail(receiver, usertype)
 	}
 }
 
