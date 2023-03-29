@@ -40,10 +40,10 @@ func sendMail(receiver string, usertype int) bool {
 
 var ctx = context.Background()
 
-func mailSending(totalUser int, receiver string, usertype int) {
+func mailSending(totalUser int, receiver []string, usertype int) {
 	for i := 0; i < totalUser; i++ {
 		time.Sleep(100 * time.Millisecond)
-		sendMail(receiver, usertype)
+		sendMail(receiver[i], usertype)
 	}
 }
 
