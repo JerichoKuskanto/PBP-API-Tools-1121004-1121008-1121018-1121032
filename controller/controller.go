@@ -40,8 +40,8 @@ func sendMail(receiver string, usertype int) bool {
 
 var ctx = context.Background()
 
-func mailSending(totalUser int, receiver []string, usertype int) {
-	for i := 0; i < totalUser; i++ {
+func mailSending(receiver []string, usertype int) {
+	for i := range receiver {
 		time.Sleep(100 * time.Millisecond)
 		sendMail(receiver[i], usertype)
 	}
