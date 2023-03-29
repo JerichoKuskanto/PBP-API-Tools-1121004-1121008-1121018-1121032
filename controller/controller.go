@@ -2,10 +2,15 @@ package controller
 
 import (
 	"PBP-API-Tools-1121004-1121008-1121018-1121032/model"
+	"context"
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
+	"strconv"
+	"time"
 
+	"github.com/redis/go-redis/v9"
 	"gopkg.in/gomail.v2"
 )
 
@@ -33,7 +38,43 @@ func sendMail(receiver string, usertype int) bool {
 	}
 }
 
+var ctx = context.Background()
+
 func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
+	var user model.User
+	var users []model.User
+	//init redis
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+	//iterator buat scan keys di set users dalam redis
+	iter := rdb.SScan(ctx, "users", 0, "prefix:*", 0).Iterator()
+	//jika ada,gw scan email ama type nya aja trus gw masukin ke users
+	//jika tidak ada, gw bikin panic , itu ntar jadi berenti
+	for iter.Next(ctx) {
+		fmt.Printf("iter.Val(): %v\n", iter.Val())
+		err := rdb.HMGet(ctx, iter.Val(), "email", "type").Scan(&user)
+		if err != nil {
+			panic(err)
+		}
+		users = append(users, user)
+	}
+	//disini rencananya mau kalau usernya masih kosong setelah dilakuin yang atas,
+	//bakalan di get dari database trus di set ke redis
+	if users == nil {
+		users = getAllUser()
+		rdb.Del(ctx, "users")
+		for i, v := range users {
+			if err := rdb.HSet(ctx, "user"+strconv.Itoa(i), v).Err(); err != nil {
+				panic(err)
+			}
+			rdb.Expire(ctx, "user"+strconv.Itoa(i), 15*time.Minute)
+			rdb.SAdd(ctx, "users", "user"+strconv.Itoa(i))
+		}
+	}
+	//nanti disini sendMail nya bisa pake for aja... dah gw masukin semua user ke users
 	sendSuccess := sendMail("exampleuser1@gmail.com", 1)
 
 	if sendSuccess {
@@ -52,6 +93,26 @@ func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+func getAllUser() []model.User {
+	db := connect()
+	defer db.Close()
+
+	query := "SELECT * FROM users"
+	rows, _ := db.Query(query)
+
+	var user model.User
+	var users []model.User
+
+	for rows.Next() {
+		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Type); err != nil {
+			log.Println(err)
+			return nil
+		} else {
+			users = append(users, user)
+		}
+	}
+	return users
+}
 func LoginUser(w http.ResponseWriter, r *http.Request) {
 	db := connect()
 	defer db.Close()
