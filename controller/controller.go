@@ -47,6 +47,9 @@ func mailSending(receiver []string, usertype int) {
 }
 
 func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
+
+}
+func getAllUserRedis() []model.User {
 	var user model.User
 	var users []model.User
 	//init redis
@@ -80,8 +83,8 @@ func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
 			rdb.SAdd(ctx, "users", "user"+strconv.Itoa(i))
 		}
 	}
+	return users
 }
-
 func getAllUser() []model.User {
 	db := connect()
 	defer db.Close()
@@ -127,7 +130,7 @@ func scheduler(w http.Response) {
 		}
 	}
 
-	s.Every(1).Hours().Do(funcRedis) //do redis setiap sejam
+	s.Every(1).Hours().Do(getAllUserRedis()) //do redis setiap sejam
 
 	s.Every(1).Day().At("22.00").Do(mailSending, userPremium, 1) //send email setiap jam 5 (UTC +7)
 	s.Every(1).Day().At("22.00").Do(mailSending, userBiasa, 2)
