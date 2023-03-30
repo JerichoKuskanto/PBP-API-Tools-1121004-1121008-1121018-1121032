@@ -148,7 +148,7 @@ func Scheduler(w http.ResponseWriter, r *http.Request) {
 	//Do redis setiap satu jam
 	s.Every(1).Hours().Do(setAllUserRedis)
 	//send email setiap jam 6 (UTC +7)
-	s.Every(1).Day().At("6.00").Do(func() {
+	s.Every(1).Day().At("23:00").Do(func() {
 		fmt.Println("Schedule Started")
 		userList := getAllUserRedis()
 
@@ -167,7 +167,8 @@ func Scheduler(w http.ResponseWriter, r *http.Request) {
 		mailSending(userBiasa, 2)
 	})
 	//Kirim email penawaran premium membership setiap jam 12 siang GMT+7
-	s.Every(1).Day().At("12.00").Do(func() {
+	s.Every(1).Day().At("05:00").Do(func() {
+		fmt.Println("Schedule Started")
 		userList := getAllUserRedis()
 
 		var userBiasa []string
