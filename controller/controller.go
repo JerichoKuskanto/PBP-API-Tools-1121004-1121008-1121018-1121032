@@ -15,6 +15,26 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+func sendPremiumOfferMail(receivers []string) {
+	m := gomail.NewMessage()
+	text := "<h2>Premium Membership</h2>"
+	text += "<p>There are many benefits that comes with a premium membership including but not limited to:</p><br>"
+	text += "<ol><li>Access to exclusive articles</li><li>No advertisement before reading article</li></ol><br>"
+	text += "<p>So, what are you waiting for? Get yourself a premium membership now!</p>"
+	//Buat header untuk email
+	for i := range receivers {
+		m.SetHeader("From", "articler8375@gmail.com")
+		m.SetHeader("To", receivers[i])
+		m.SetHeader("Subject", "Premium Membership Offer")
+		m.SetBody("text/html", text)
+		d := gomail.NewDialer("smtp.gmail.com", 587, "articler8375@gmail.com", "1234")
+		if err := d.DialAndSend(m); err != nil {
+			log.Println("Failed to send premium offer email to", receivers[i])
+		} else {
+			log.Println("Successfully sent premium offer email to", receivers[i])
+		}
+	}
+}
 func sendMail(receiver string, usertype int) {
 	m := gomail.NewMessage()
 	//Buat header untuk email
@@ -31,9 +51,9 @@ func sendMail(receiver string, usertype int) {
 	}
 	d := gomail.NewDialer("smtp.gmail.com", 587, "articler8375@gmail.com", "1234")
 	if err := d.DialAndSend(m); err != nil {
-		log.Println(err)
+		log.Println("Failed to send email to", receiver)
 	} else {
-		log.Println("Email sent to ", receiver)
+		log.Println("Email sent to", receiver)
 	}
 }
 
@@ -41,13 +61,32 @@ var ctx = context.Background()
 
 func mailSending(receiver []string, usertype int) {
 	for i := range receiver {
-		time.Sleep(100 * time.Millisecond)
+		//time.Sleep(100 * time.Millisecond)
 		sendMail(receiver[i], usertype)
 	}
 }
 
 func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
 
+}
+func setAllUserRedis() {
+	var users []model.User
+
+	rdb := redis.NewClient(&redis.Options{
+		Addr:     "localhost:6379",
+		Password: "", // no password set
+		DB:       0,  // use default DB
+	})
+
+	users = getAllUser()
+	rdb.Del(ctx, "users")
+	for i, v := range users {
+		if err := rdb.HSet(ctx, "user"+strconv.Itoa(i), v).Err(); err != nil {
+			panic(err)
+		}
+		rdb.Expire(ctx, "user"+strconv.Itoa(i), 60*time.Minute)
+		rdb.SAdd(ctx, "users", "user"+strconv.Itoa(i))
+	}
 }
 func getAllUserRedis() []model.User {
 	var user model.User
@@ -59,33 +98,19 @@ func getAllUserRedis() []model.User {
 		DB:       0,  // use default DB
 	})
 	//iterator buat scan keys di set users dalam redis
-	iter := rdb.SScan(ctx, "users", 0, "prefix:*", 0).Iterator()
+	iter := rdb.SScan(ctx, "users", 0, "", 0).Iterator()
 	//jika ada,gw scan email ama type nya aja trus gw masukin ke users
 	//jika tidak ada, gw bikin panic , itu ntar jadi berenti
 	for iter.Next(ctx) {
-		fmt.Printf("iter.Val(): %v\n", iter.Val())
 		err := rdb.HMGet(ctx, iter.Val(), "email", "type").Scan(&user)
 		if err != nil {
 			panic(err)
 		}
 		users = append(users, user)
 	}
-	//disini rencananya mau kalau usernya masih kosong setelah dilakuin yang atas,
-	//bakalan di get dari database trus di set ke redis
-	if users == nil {
-		users = getAllUserFromDB()
-		rdb.Del(ctx, "users")
-		for i, v := range users {
-			if err := rdb.HSet(ctx, "user"+strconv.Itoa(i), v).Err(); err != nil {
-				panic(err)
-			}
-			rdb.Expire(ctx, "user"+strconv.Itoa(i), 15*time.Minute)
-			rdb.SAdd(ctx, "users", "user"+strconv.Itoa(i))
-		}
-	}
 	return users
 }
-func getAllUserFromDB() []model.User {
+func getAllUser() []model.User {
 	db := connect()
 	defer db.Close()
 
@@ -96,7 +121,7 @@ func getAllUserFromDB() []model.User {
 	var users []model.User
 
 	for rows.Next() {
-		if err := rows.Scan(&user.ID, &user.Username, &user.Email, &user.Password, &user.Type); err != nil {
+		if err := rows.Scan(&user.ID, &user.Username, &user.Password, &user.Email, &user.Type); err != nil {
 			log.Println(err)
 			return nil
 		} else {
@@ -106,59 +131,53 @@ func getAllUserFromDB() []model.User {
 	return users
 }
 
-func sendUnauthorizedResponse(w http.ResponseWriter) {
-	var response model.Response
-	response.Status = 401
-	response.Message = "Unauthorized Access"
-	w.Header().Set("Content=Type", "application/json")
-	json.NewEncoder(w).Encode(response)
-}
-
 func Scheduler(w http.ResponseWriter, r *http.Request) {
-	fmt.Println("Test")
 	s := gocron.NewScheduler(time.UTC) //00.00 GMT
 
-	userList := getAllUserRedis()
+	//Set redis saat pertama kali scheduler dijalankan
+	setAllUserRedis()
 
-	var userPremium []string
-	var userBiasa []string
+	//Do redis setiap satu jam
+	s.Every(1).Hours().Do(setAllUserRedis)
+	//send email setiap jam 6 (UTC +7)
+	s.Every(1).Day().At("6.00").Do(func() {
+		fmt.Println("Schedule Started")
+		userList := getAllUserRedis()
 
-	for i := range userList {
-		if userList[i].Type == 1 {
-			userBiasa = append(userBiasa, userList[i].Email)
-		} else {
-			userPremium = append(userPremium, userList[i].Email)
+		var userPremium []string
+		var userBiasa []string
+
+		for i := range userList {
+			if userList[i].Type == 1 {
+				userBiasa = append(userBiasa, userList[i].Email)
+			}
+			if userList[i].Type == 2 {
+				userPremium = append(userPremium, userList[i].Email)
+			}
 		}
-	}
-
-	s.Every(1).Hours().Do(getAllUserRedis()) //do redis setiap sejam
-
-	s.Every(5).Seconds().Do(func() {
-		fmt.Println("Test")
+		go mailSending(userPremium, 1)
+		go mailSending(userBiasa, 2)
+		//time.Sleep(100 * time.Millisecond)
 	})
-	s.Every(1).Day().At("22.00").Do(mailSending, userPremium, 1) //send email setiap jam 5 (UTC +7)
-	s.Every(1).Day().At("22.00").Do(mailSending, userBiasa, 2)
-	s.Every(1).Day().At("05.00").Do(sendPremiumOfferMail, userBiasa) //Kirim email penawaran premium membership setiap jam 12 siang GMT+7
-	s.StartAsync()
-}
+	//Kirim email penawaran premium membership setiap jam 12 siang GMT+7
+	s.Every(1).Day().At("12.00").Do(func() {
+		userList := getAllUserRedis()
 
-func sendPremiumOfferMail(receivers []string) {
-	m := gomail.NewMessage()
-	text := "<h2>Premium Membership</h2>"
-	text += "<p>There are many benefits that comes with a premium membership including but not limited to:</p><br>"
-	text += "<ol><li>Access to exclusive articles</li><li>No advertisement before reading article</li></ol><br>"
-	text += "<p>So, what are you waiting for? Get yourself a premium membership now!</p>"
-	//Buat header untuk email
-	for i := range receivers {
-		m.SetHeader("From", "articler8375@gmail.com")
-		m.SetHeader("To", receivers[i])
-		m.SetHeader("Subject", "Premium Membership Offer")
-		m.SetBody("text/html", text)
-		d := gomail.NewDialer("smtp.gmail.com", 587, "articler8375@gmail.com", "1234")
-		if err := d.DialAndSend(m); err != nil {
-			log.Println(err)
-		} else {
-			log.Println("Premium offer email sent to ", receivers[i])
+		var userBiasa []string
+
+		for i := range userList {
+			if userList[i].Type == 1 {
+				userBiasa = append(userBiasa, userList[i].Email)
+			}
 		}
-	}
+		sendPremiumOfferMail(userBiasa)
+	})
+	s.StartAsync()
+
+	curtime := time.Now()
+	var response model.Response
+	response.Status = 200
+	response.Message = "Schedule started at " + curtime.String()
+	w.Header().Set("Content=Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
