@@ -131,7 +131,7 @@ func scheduler(w http.Response) {
 
 	s.Every(1).Day().At("22.00").Do(mailSending, userPremium, 1) //send email setiap jam 5 (UTC +7)
 	s.Every(1).Day().At("22.00").Do(mailSending, userBiasa, 2)
-
+	s.Every(1).Day().At("05.00").Do(mailSending, userBiasa, 2) //Kirim email penawaran premium membership setiap jam 12 siang GMT+7
 	s.StartAsync()
 }
 
