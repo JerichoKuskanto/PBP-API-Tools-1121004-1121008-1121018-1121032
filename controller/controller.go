@@ -63,7 +63,7 @@ func sendMail(receiver string, usertype int) {
 // fungsi yang mengirim email link artikel
 func mailSending(receiver []string, usertype int) {
 	for i := range receiver {
-		//time.Sleep(100 * time.Millisecond)
+		time.Sleep(100 * time.Millisecond)
 		sendMail(receiver[i], usertype)
 	}
 }
