@@ -134,3 +134,27 @@ func scheduler(w http.Response) {
 
 	s.StartAsync()
 }
+
+func sendPremiumOfferMail(users []model.User) {
+	m := gomail.NewMessage()
+	text := "<h2>Premium Membership</h2>"
+	text += "<p>There are many benefits that comes with a premium membership including but not limited to:</p><br>"
+	text += "<ol><li>Access to exclusive articles</li><li>No advertisement before reading article</li></ol><br>"
+	text += "<p>So, what are you waiting for? Get yourself a premium membership now!</p>"
+	//Buat header untuk email
+	for i := range users {
+		if users[i].Type == 1 {
+			m.SetHeader("From", "articler8375@gmail.com")
+			m.SetHeader("To", users[i].Email)
+			m.SetHeader("Subject", "Premium Membership Offer")
+			m.SetBody("text/html", text)
+			d := gomail.NewDialer("smtp.gmail.com", 587, "articler8375@gmail.com", "1234")
+			if err := d.DialAndSend(m); err != nil {
+				log.Println(err)
+			} else {
+				log.Println("Premium offer email sent to ", users[i].Email)
+			}
+		}
+
+	}
+}
