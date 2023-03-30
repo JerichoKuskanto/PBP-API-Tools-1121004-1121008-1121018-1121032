@@ -5,7 +5,7 @@ type User struct {
 	Username string `json:"username" redis:"username"`
 	Email    string `json:"email" redis:"email"`
 	Password string `json:"password" redis:"password"`
-	Type     string `json:"type" redis:"type"`
+	Type     int    `json:"type" redis:"type"`
 }
 
 type UsersResponse struct {
