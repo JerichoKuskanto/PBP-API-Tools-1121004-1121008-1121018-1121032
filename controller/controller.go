@@ -88,9 +88,22 @@ func getAllUserRedis() []model.User {
 		}
 		users = append(users, user)
 	}
+	//disini rencananya mau kalau usernya masih kosong setelah dilakuin yang atas,
+	//bakalan di get dari database trus di set ke redis
+	if users == nil {
+		users = getAllUser()
+		rdb.Del(ctx, "users")
+		for i, v := range users {
+			if err := rdb.HSet(ctx, "user"+strconv.Itoa(i), v).Err(); err != nil {
+				panic(err)
+			}
+			rdb.Expire(ctx, "user"+strconv.Itoa(i), 15*time.Minute)
+			rdb.SAdd(ctx, "users", "user"+strconv.Itoa(i))
+		}
+	}
 	return users
 }
-func getAllUser() []model.User {
+func getAllUserFromDB() []model.User {
 	db := connect()
 	defer db.Close()
 
@@ -122,15 +135,7 @@ func sendUnauthorizedResponse(w http.ResponseWriter) {
 func Scheduler(w http.ResponseWriter, r *http.Request) {
 	s := gocron.NewScheduler(time.UTC) //00.00 GMT
 
-	//Set redis saat pertama kali scheduler dijalankan
-	setAllUserRedis()
-
-	//Do redis setiap satu jam
-	s.Every(1).Hours().Do(setAllUserRedis)
-	//send email setiap jam 6 (UTC +7)
-	s.Every(1).Day().At("6.00").Do(func() {
-		fmt.Println("Schedule Started")
-		userList := getAllUserRedis()
+	userList := getAllUser()
 
 		var userPremium []string
 		var userBiasa []string
