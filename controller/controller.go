@@ -111,15 +111,26 @@ func sendUnauthorizedResponse(w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func scheduler(w http.Response){
+func scheduler(w http.Response) {
 	s := gocron.NewScheduler(time.UTC) //00.00 GMT
-	
-	var arrays []string
 
-	s.Every(1).Hours().Do(funcRedis,) //do redis setiap sejam
+	userList := getAllUser()
 
-	s.Every(1).Day().At("22.00").Do(mailSending, arrays, 1) //send email setiap jam 5 (UTC +7)
+	var userPremium []string
+	var userBiasa []string
+
+	for i := range userList {
+		if userList[i].Type == 1 {
+			userBiasa = append(userBiasa, userList[i].Email)
+		} else {
+			userPremium = append(userPremium, userList[i].Email)
+		}
+	}
+
+	s.Every(1).Hours().Do(funcRedis) //do redis setiap sejam
+
+	s.Every(1).Day().At("22.00").Do(mailSending, userPremium, 1) //send email setiap jam 5 (UTC +7)
+	s.Every(1).Day().At("22.00").Do(mailSending, userBiasa, 2)
 
 	s.StartAsync()
 }
-
