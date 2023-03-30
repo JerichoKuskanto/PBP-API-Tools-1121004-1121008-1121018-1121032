@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/go-co-op/gocron"
 	"github.com/redis/go-redis/v9"
 	"gopkg.in/gomail.v2"
 )
@@ -128,3 +129,16 @@ func sendUnauthorizedResponse(w http.ResponseWriter) {
 	w.Header().Set("Content=Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+func scheduler(w http.Response){
+	s := gocron.NewScheduler(time.UTC) //00.00 GMT
+	
+	var arrays []string
+
+	s.Every(1).Hours().Do(funcRedis,) //do redis setiap sejam
+
+	s.Every(1).Day().At("22.00").Do(mailSending, arrays, 1) //send email setiap jam 5 (UTC +7)
+
+	s.StartAsync()
+}
+
