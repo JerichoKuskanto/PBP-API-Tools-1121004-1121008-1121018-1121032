@@ -13,7 +13,7 @@ import (
 func main() {
 	router := mux.NewRouter()
 
-	router.HandleFunc("/email", controller.SendNotificationEmail).Methods("POST")
+	router.HandleFunc("/scheduler", controller.Scheduler).Methods("POST")
 
 	http.Handle("/", router)
 	fmt.Println("Connected to port 8492")

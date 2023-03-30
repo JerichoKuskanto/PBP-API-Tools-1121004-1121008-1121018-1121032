@@ -114,7 +114,8 @@ func sendUnauthorizedResponse(w http.ResponseWriter) {
 	json.NewEncoder(w).Encode(response)
 }
 
-func scheduler(w http.Response) {
+func Scheduler(w http.ResponseWriter, r *http.Request) {
+	fmt.Println("Test")
 	s := gocron.NewScheduler(time.UTC) //00.00 GMT
 
 	userList := getAllUserRedis()
@@ -132,32 +133,32 @@ func scheduler(w http.Response) {
 
 	s.Every(1).Hours().Do(getAllUserRedis()) //do redis setiap sejam
 
+	s.Every(5).Seconds().Do(func() {
+		fmt.Println("Test")
+	})
 	s.Every(1).Day().At("22.00").Do(mailSending, userPremium, 1) //send email setiap jam 5 (UTC +7)
 	s.Every(1).Day().At("22.00").Do(mailSending, userBiasa, 2)
-	s.Every(1).Day().At("05.00").Do(mailSending, userBiasa, 2) //Kirim email penawaran premium membership setiap jam 12 siang GMT+7
+	s.Every(1).Day().At("05.00").Do(sendPremiumOfferMail, userBiasa) //Kirim email penawaran premium membership setiap jam 12 siang GMT+7
 	s.StartAsync()
 }
 
-func sendPremiumOfferMail(users []model.User) {
+func sendPremiumOfferMail(receivers []string) {
 	m := gomail.NewMessage()
 	text := "<h2>Premium Membership</h2>"
 	text += "<p>There are many benefits that comes with a premium membership including but not limited to:</p><br>"
 	text += "<ol><li>Access to exclusive articles</li><li>No advertisement before reading article</li></ol><br>"
 	text += "<p>So, what are you waiting for? Get yourself a premium membership now!</p>"
 	//Buat header untuk email
-	for i := range users {
-		if users[i].Type == 1 {
-			m.SetHeader("From", "articler8375@gmail.com")
-			m.SetHeader("To", users[i].Email)
-			m.SetHeader("Subject", "Premium Membership Offer")
-			m.SetBody("text/html", text)
-			d := gomail.NewDialer("smtp.gmail.com", 587, "articler8375@gmail.com", "1234")
-			if err := d.DialAndSend(m); err != nil {
-				log.Println(err)
-			} else {
-				log.Println("Premium offer email sent to ", users[i].Email)
-			}
+	for i := range receivers {
+		m.SetHeader("From", "articler8375@gmail.com")
+		m.SetHeader("To", receivers[i])
+		m.SetHeader("Subject", "Premium Membership Offer")
+		m.SetBody("text/html", text)
+		d := gomail.NewDialer("smtp.gmail.com", 587, "articler8375@gmail.com", "1234")
+		if err := d.DialAndSend(m); err != nil {
+			log.Println(err)
+		} else {
+			log.Println("Premium offer email sent to ", receivers[i])
 		}
-
 	}
 }
