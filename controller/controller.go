@@ -14,7 +14,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
-func sendMail(receiver string, usertype int) bool {
+func sendMail(receiver string, usertype int) {
 	m := gomail.NewMessage()
 	//Buat header untuk email
 	m.SetHeader("From", "articler8375@gmail.com")
@@ -31,10 +31,8 @@ func sendMail(receiver string, usertype int) bool {
 	d := gomail.NewDialer("smtp.gmail.com", 587, "articler8375@gmail.com", "1234")
 	if err := d.DialAndSend(m); err != nil {
 		log.Println(err)
-		return false
 	} else {
 		log.Println("Email sent to ", receiver)
-		return true
 	}
 }
 
@@ -80,23 +78,6 @@ func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
 			rdb.Expire(ctx, "user"+strconv.Itoa(i), 15*time.Minute)
 			rdb.SAdd(ctx, "users", "user"+strconv.Itoa(i))
 		}
-	}
-	//nanti disini sendMail nya bisa pake for aja... dah gw masukin semua user ke users
-	sendSuccess := sendMail("exampleuser1@gmail.com", 1)
-
-	if sendSuccess {
-		var response model.Response
-		response.Status = 200
-		response.Message = "Email Sent"
-		w.Header().Set("Content=Type", "application/json")
-		json.NewEncoder(w).Encode(response)
-
-	} else {
-		var response model.Response
-		response.Status = 400
-		response.Message = "Fail to send email"
-		w.Header().Set("Content=Type", "application/json")
-		json.NewEncoder(w).Encode(response)
 	}
 }
 
