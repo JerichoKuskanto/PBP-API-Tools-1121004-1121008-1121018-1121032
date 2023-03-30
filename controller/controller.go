@@ -164,8 +164,7 @@ func Scheduler(w http.ResponseWriter, r *http.Request) {
 			}
 		}
 		go mailSending(userPremium, 1)
-		go mailSending(userBiasa, 2)
-		//time.Sleep(100 * time.Millisecond)
+		mailSending(userBiasa, 2)
 	})
 	//Kirim email penawaran premium membership setiap jam 12 siang GMT+7
 	s.Every(1).Day().At("12.00").Do(func() {
