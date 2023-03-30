@@ -73,7 +73,7 @@ func getAllUserRedis() []model.User {
 	//disini rencananya mau kalau usernya masih kosong setelah dilakuin yang atas,
 	//bakalan di get dari database trus di set ke redis
 	if users == nil {
-		users = getAllUser()
+		users = getAllUserFromDB()
 		rdb.Del(ctx, "users")
 		for i, v := range users {
 			if err := rdb.HSet(ctx, "user"+strconv.Itoa(i), v).Err(); err != nil {
@@ -85,7 +85,7 @@ func getAllUserRedis() []model.User {
 	}
 	return users
 }
-func getAllUser() []model.User {
+func getAllUserFromDB() []model.User {
 	db := connect()
 	defer db.Close()
 
@@ -117,7 +117,7 @@ func sendUnauthorizedResponse(w http.ResponseWriter) {
 func scheduler(w http.Response) {
 	s := gocron.NewScheduler(time.UTC) //00.00 GMT
 
-	userList := getAllUser()
+	userList := getAllUserRedis()
 
 	var userPremium []string
 	var userBiasa []string
