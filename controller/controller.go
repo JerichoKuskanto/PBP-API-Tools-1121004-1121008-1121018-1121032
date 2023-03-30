@@ -15,6 +15,7 @@ import (
 	"gopkg.in/gomail.v2"
 )
 
+// fungsi untuk mengirimkan email penawaran premium ke member
 func sendPremiumOfferMail(receivers []string) {
 	m := gomail.NewMessage()
 	text := "<h2>Premium Membership</h2>"
@@ -35,6 +36,8 @@ func sendPremiumOfferMail(receivers []string) {
 		}
 	}
 }
+
+// fungsi untuk mengirimkan email tentang link artikel
 func sendMail(receiver string, usertype int) {
 	m := gomail.NewMessage()
 	//Buat header untuk email
@@ -57,8 +60,7 @@ func sendMail(receiver string, usertype int) {
 	}
 }
 
-var ctx = context.Background()
-
+// fungsi yang mengirim email link artikel
 func mailSending(receiver []string, usertype int) {
 	for i := range receiver {
 		//time.Sleep(100 * time.Millisecond)
@@ -66,9 +68,10 @@ func mailSending(receiver []string, usertype int) {
 	}
 }
 
-func SendNotificationEmail(w http.ResponseWriter, r *http.Request) {
+// context untuk redis
+var ctx = context.Background()
 
-}
+// fungsi untuk memasukan user dari database ke redis
 func setAllUserRedis() {
 	var users []model.User
 
@@ -78,7 +81,7 @@ func setAllUserRedis() {
 		DB:       0,  // use default DB
 	})
 
-	users = getAllUser()
+	users = getAllUserFromDB()
 	rdb.Del(ctx, "users")
 	for i, v := range users {
 		if err := rdb.HSet(ctx, "user"+strconv.Itoa(i), v).Err(); err != nil {
@@ -88,6 +91,8 @@ func setAllUserRedis() {
 		rdb.SAdd(ctx, "users", "user"+strconv.Itoa(i))
 	}
 }
+
+// fungsi untuk mengambil users dari redis
 func getAllUserRedis() []model.User {
 	var user model.User
 	var users []model.User
@@ -99,8 +104,8 @@ func getAllUserRedis() []model.User {
 	})
 	//iterator buat scan keys di set users dalam redis
 	iter := rdb.SScan(ctx, "users", 0, "", 0).Iterator()
-	//jika ada,gw scan email ama type nya aja trus gw masukin ke users
-	//jika tidak ada, gw bikin panic , itu ntar jadi berenti
+	//jika ada, scan email dan type saja kemudian masukan ke users
+	//jika tidak ada, dilakukan panic sehingga berhenti
 	for iter.Next(ctx) {
 		err := rdb.HMGet(ctx, iter.Val(), "email", "type").Scan(&user)
 		if err != nil {
@@ -110,7 +115,9 @@ func getAllUserRedis() []model.User {
 	}
 	return users
 }
-func getAllUser() []model.User {
+
+// fungsi untuk mendapatkan semua user dari db
+func getAllUserFromDB() []model.User {
 	db := connect()
 	defer db.Close()
 
@@ -131,6 +138,7 @@ func getAllUser() []model.User {
 	return users
 }
 
+// fungsi untuk menjalankan scheduller
 func Scheduler(w http.ResponseWriter, r *http.Request) {
 	s := gocron.NewScheduler(time.UTC) //00.00 GMT
 
